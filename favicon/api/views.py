@@ -63,11 +63,15 @@ def checkUsernameInput(input_username):
 def checkEmailInput(input_email):
     try:
             email_check = User.objects.get(email=input_email)
+            # username_check = User.objects.get(username=uname)
             # email_serializer = UserSerializer(instance=email_check,many=False)
             # if email_serializer is not None:
             #     return False
             if email_check:
                 return False
+            # elif email_check==username_check:
+            #     print("Here")
+            #     return True
     except:
             return True
 
@@ -75,7 +79,9 @@ def checkEmailInput(input_email):
 @api_view(['POST'])
 def userCreate(request):
     try:
-        
+        # print(str(request.data['username']))
+        request.data['username']=request.data['username'].lower()
+        request.data['email']=request.data['email'].lower()
         serializer = UserSerializer(data=request.data)
         
         uname=str(request.data['username'])
@@ -85,8 +91,10 @@ def userCreate(request):
         # print(uniqueUsernameStatus)
         # print(uniqueEmailStatus)
         if uniqueUsernameStatus==True and uniqueEmailStatus==True:
+            
+            # print(serializer.data["username"])
             if serializer.is_valid():  
-                # serializer.save()
+                serializer.save()
                 response = {
                 "User Create Successful"
                 }
@@ -117,8 +125,18 @@ def userCreate(request):
 @api_view(['POST'])
 def userUpdate(request,pk):
     try:
+        #check if user has been used and confirms it in lower case
+        request.data['username']=request.data['username'].lower()
+        request.data['email']=request.data['email'].lower()
+        uname=str(request.data['username'])
+        email=str(request.data['email'])
+        
+        # uniqueUsernameStatus=checkUsernameInput(uname)
+        # uniqueEmailStatus=checkEmailInput(email)
+        
         users = User.objects.get(id=pk)
         serializer = UserSerializer(instance=users,data=request.data)
+        
         if serializer.is_valid():  
             serializer.save()
             response = {
@@ -128,6 +146,30 @@ def userUpdate(request,pk):
             response = {
             "Error: User Not Updated"
             }
+        # if uniqueUsernameStatus==True and uniqueEmailStatus==True:
+            
+        #     # print(serializer.data["username"])
+        #     if serializer.is_valid():  
+        #         # serializer.save()
+        #         response = {
+        #         "User Update Successful"
+        #         }
+        #     else:
+        #         response = {
+        #         "Error: User Not Updated : Check Input"
+        #         }
+        # elif uniqueUsernameStatus==False and uniqueEmailStatus==True:
+        #     response = {
+        #                 "Error: Username Already Exists"
+        #                 } 
+        # elif uniqueUsernameStatus==True and uniqueEmailStatus==False:
+        #     response = {
+        #                 "Error: Email Already Exists"
+        #                 } 
+        # elif uniqueUsernameStatus==False and uniqueEmailStatus==False:
+        #     response = {
+        #                 "Error: Username and Email Already Exists"
+        #                 }    
     except:
         response = {
             "Error Occured"
@@ -170,7 +212,7 @@ def userLogin(request):
     # body= request.body
     # data={}
     # data = json.loads(body)
-    # users = User.objects.get(id=pk)
+    # users = User.objects.get( =pk)
     # user_serializer = UserSerializer(users,many=False)
     # response=serializer.data
   
@@ -195,7 +237,7 @@ def userLogin(request):
             "Check Credentials"
             }
     except:
-        response = {
+        response = { 
             "Invalid Username"
         }
    
