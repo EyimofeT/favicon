@@ -7,8 +7,10 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .serializers import UserSerializer, UserLoginSerializer
 from .models import User
+from rest_framework.exceptions import AuthenticationFailed
 # Create your views here.
 import json
+import jwt, datetime
 
 @api_view(['GET'])
 def apiOverview(request):
@@ -19,6 +21,8 @@ def apiOverview(request):
         "Users List":'/user-list/',
         "User Search":"/user-search/<str:pk>",
         "User Delete":"/user-delete/<str:pk>",
+        "logout":"/logout/",
+        "User View" : "/user-view/"
     }
     return Response(list)
 
@@ -79,20 +83,19 @@ def checkEmailInput(input_email):
 @api_view(['POST'])
 def userCreate(request):
     try:
-        # print(str(request.data['username']))
+        # request.data['first_name']=request.data['first_name'].capitalize()
+        # request.data['last_name']=request.data['last_name'].capitalize()
         request.data['username']=request.data['username'].lower()
         request.data['email']=request.data['email'].lower()
+        
         serializer = UserSerializer(data=request.data)
         
         uname=str(request.data['username'])
         email=str(request.data['email'])
         uniqueUsernameStatus=checkUsernameInput(uname)
         uniqueEmailStatus=checkEmailInput(email)
-        # print(uniqueUsernameStatus)
-        # print(uniqueEmailStatus)
         if uniqueUsernameStatus==True and uniqueEmailStatus==True:
-            
-            # print(serializer.data["username"])
+             
             if serializer.is_valid():  
                 serializer.save()
                 response = {
@@ -209,37 +212,91 @@ def userDelete(request,pk):
 
 @api_view(['POST'])
 def userLogin(request):
-    # body= request.body
-    # data={}
-    # data = json.loads(body)
-    # users = User.objects.get( =pk)
-    # user_serializer = UserSerializer(users,many=False)
-    # response=serializer.data
-  
+    
     username_input = request.data['username']
-    try:
-        users = User.objects.get(username=username_input)
-        serializer = UserLoginSerializer(instance=users,data=request.data)
-        user_serializer = UserSerializer(users,many=False)
-        if serializer.is_valid():  
-            # print(serializer.data['username'])
-            if request.data['username']==serializer.data['username'] and request.data['password']==serializer.data['password']:
-                
-                user_cred=user_serializer.data
-                user_cred.update({'User Key':'equishbkfoisdvniuwbvkwjnboqiua1234567u8io9pMofiiWroteThis'})
-                user_cred.update({'Login Status':'Successful'})
-                # response = {"User Login Successful" }
-                response=user_cred
-            else:
-                response = {"Invalid Password"}     
-        else:
-            response = {
-            "Check Credentials"
-            }
-    except:
-        response = { 
-            "Invalid Username"
-        }
+    password_input = request.data['password']
+    user=User.objects.filter(username=username_input).first()
+    user_serializer = UserSerializer(user,many=False)
+    
+    if user is None:
+        raise AuthenticationFailed("User not Found!")
+    
+    if not user.check_password(password_input):
+        raise AuthenticationFailed("Incorrect Password!")
+    
+    payload = {
+        'id':user.id,
+        'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=60),
+        'iat': datetime.datetime.utcnow(),
+        "is_superuser": user.is_superuser ,
+        
+    }
+    token = jwt.encode(payload, 'secret',algorithm='HS256')
+    # .decode('utf-8')
+    
+    response =Response()
+    response.set_cookie(key='jwt', value=token,httponly=True)
+    response.data= {
+        "Message" : "Login Successful", 
+        "Status":200,
+        'jwt' : token
+    }
    
-    return Response(response)
+    
+    # return Response(user_serializer.data)
+    return response
+    
+#     try:
+#         users=User.objects.filter(username=username_input).first()
+#         # users = User.objects.get(username=username_input)
+#         serializer = UserLoginSerializer(instance=users,data=request.data)
+#         user_serializer = UserSerializer(users,many=False)
+#         if serializer.is_valid():  
+#             # print(serializer.data['username'])
+#             if request.data['username']==serializer.data['username'] and request.data['password']==serializer.data['password']:
+                
+#                 user_cred=user_serializer.data
+#                 # user_cred.update({'User Key':'equishbkfoisdvniuwbvkwjnboqiua1234567u8io9pMofiiWroteThis'})
+#                 # user_cred.update({'Login Status':'Successful'})
+#                 # response = {"User Login Successful" }
+#                 response=user_cred
+#             else:
+#                 response = {"Invalid Username/Password"}     
+#         else:
+#             response = {
+#             "Check Input Values"
+#             }
+#     except:
+#         response = { 
+#             "Invalid Username/Password"
+#         }
+   
+#     return Response(response)
+@api_view(['GET'])
+def userView(request):
+    token= request.COOKIES.get('jwt')
+    if not token:
+        raise AuthenticationFailed('Unauthenticated')
+    
+    try:
+        
+        payload = jwt.decode(token, 'secret', algorithms=['HS256'])
 
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationFailed('Unauthenticated')
+    
+    user = User.objects.filter(id=payload['id']).first()
+    # user = User.objects.get(id=payload['id'])
+    serializer= UserSerializer(user)
+    
+    return Response(serializer.data)
+    # return Response(token)
+
+@api_view(['POST'])    
+def logout(request):
+    response=Response()
+    response.delete_cookie('jwt')
+    response.data={
+        'Message': 'Logout Successful'
+    }
+    return response
