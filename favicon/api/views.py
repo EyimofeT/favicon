@@ -15,14 +15,14 @@ import jwt, datetime
 @api_view(['GET'])
 def apiOverview(request):
     list={
-        "User SignUp":"/signup/",
-        "User LogIn":'/login/',
-        "User Update":"/user-update/<str:pk>",
-        "Users List":'/user-list/',
-        "User Search":"/user-search/<str:pk>",
-        "User Delete":"/user-delete/<str:pk>",
-        "logout":"/logout/",
-        "User View" : "/user-view/"
+        "User SignUp":"/api/signup/",
+        "User LogIn":'/api/login/',
+        "User Update":"/api/user-update/<str:pk>",
+        "Users List":'/api/user-list/',
+        "User Search":"/api/user-search/<str:pk>",
+        "User Delete":"/api/user-delete/<str:pk>",
+        "logout":"/api/logout/",
+        "User View" : "/api/user-view/"
     }
     return Response(list)
 
